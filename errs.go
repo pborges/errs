@@ -8,26 +8,26 @@ import (
 	"strings"
 )
 
-type Stack []StackFrame
+var rootLast = true
 
-func (s Stack) Root() error {
-	if len(s) == 0 {
-		return nil
-	}
-	return s[len(s)-1].Err
-}
+type Stack []StackFrame
 
 func (s Stack) Error() string {
 	if len(s) == 0 {
 		return "empty error stack"
 	}
-	return s.Root().Error()
+	if s[0].Err == nil {
+		return ""
+	}
+	return s[0].Err.Error()
 }
 
 func (s Stack) Unwrap() []error {
-	errs := make([]error, len(s))
+	errs := make([]error, 0, len(s))
 	for i := range s {
-		errs[i] = s[i].Err
+		if s[i].Err != nil {
+			errs = append(errs, s[i].Err)
+		}
 	}
 	return errs
 }
@@ -79,7 +79,7 @@ func newStackFrame(err error) StackFrame {
 func Wrap(err error) error {
 	var eStack Stack
 	if errors.As(err, &eStack) {
-		return Stack(append([]StackFrame{newStackFrame(nil)}, eStack...))
+		return append(eStack, newStackFrame(nil))
 	}
 	return Stack([]StackFrame{newStackFrame(err)})
 }
@@ -89,37 +89,36 @@ func Wrap(err error) error {
 func Wrapf(err error, format string, a ...any) error {
 	var eStack Stack
 	if errors.As(err, &eStack) {
-		return Stack(
-			append(
-				[]StackFrame{newStackFrame(fmt.Errorf(format, a...))},
-				eStack...,
-			),
-		)
+		return append(eStack, newStackFrame(fmt.Errorf(format, a...)))
 	}
-	return Stack([]StackFrame{newStackFrame(fmt.Errorf(format+" » %s", append(a, err.Error())...))})
+	return Stack([]StackFrame{newStackFrame(fmt.Errorf(format+" » %w", append(a, err)...))})
 }
 
-func Dump(err error) string {
+func Detailed(err error) string {
 	var stack Stack
 	if errors.As(err, &stack) && len(stack) > 1 {
-		errs := make([]string, len(stack)+1)
-		errs[0] = stack.Error()
+		lines := make([]string, len(stack)+1)
+		lines[0] = stack.Error()
 		for i := 0; i < len(stack); i++ {
+			n := i
+			if rootLast {
+				n = len(stack) - 1 - i
+			}
 			prefix := "│"
-			for p := 1; p < i; p++ {
+			for p := 1; p < n; p++ {
 				prefix += " "
 			}
-			if i > 0 {
+			if n > 0 {
 				prefix += "└"
 			}
-			if i == len(stack)-1 {
+			if n == len(stack)-1 {
 				prefix += "─"
 			} else {
 				prefix += "┬"
 			}
-			errs[i+1] = fmt.Sprintf("%s %s", prefix, stack[i].Error())
+			lines[n+1] = fmt.Sprintf("%s %s", prefix, stack[i].Error())
 		}
-		return strings.Join(errs, "\n")
+		return strings.Join(lines, "\n")
 
 	}
 	return err.Error()

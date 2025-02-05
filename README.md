@@ -11,3 +11,7 @@ Inbune errors with Caller info and bubble it up the stack.
 # Pass through an error and add context
 
 # Dump the error stack
+
+
+# TODO
+- [ ] should the Detailed view be call order or reversed?

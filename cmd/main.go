@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"github.com/pborges/errs"
 	"io"
 	"log"
@@ -13,10 +14,12 @@ func main() {
 
 	err := a()
 	log.Println(err)
-	log.Println(errs.Dump(err))
-	log.Println(errs.Dump(f()))
-	log.Println(errs.Dump(errs.Wrap(io.EOF)))
-	log.Println(errs.Dump(errs.Wrapf(io.EOF, "i am no good")))
+	log.Println(errs.Detailed(err))
+	log.Println(errs.Detailed(f()))
+	log.Println(errs.Detailed(errs.Wrap(io.EOF)))
+	log.Println(errs.Detailed(errs.Wrapf(io.EOF, "i am no good")))
+
+	log.Println(errors.Is(err, io.EOF))
 }
 
 func a() error {
