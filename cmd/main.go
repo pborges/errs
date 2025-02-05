@@ -41,3 +41,17 @@ func d() error {
 func f() error {
 	return errs.Wrap(io.EOF)
 }
+
+/**
+OUTPUT:
+2025/02/05 07:34:36 main.go:16: unable to read » EOF
+2025/02/05 07:34:36 main.go:17: unable to read » EOF
+│┬ main.go:26 (main.a)
+│└┬ main.go:30 (main.b) unable to call c
+│ └┬ main.go:34 (main.c)
+│  └─ main.go:38 (main.d) unable to read » EOF
+2025/02/05 07:34:36 main.go:18: EOF
+2025/02/05 07:34:36 main.go:19: EOF
+2025/02/05 07:34:36 main.go:20: i am no good » EOF
+2025/02/05 07:34:36 main.go:22: true
+*/
