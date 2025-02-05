@@ -14,6 +14,7 @@ func main() {
 	err := a()
 	log.Println(err)
 	log.Println(errs.Dump(err))
+	log.Println(errs.Dump(f()))
 	log.Println(errs.Dump(errs.Wrap(io.EOF)))
 	log.Println(errs.Dump(errs.Wrapf(io.EOF, "i am no good")))
 }
@@ -32,4 +33,8 @@ func c() error {
 
 func d() error {
 	return errs.Wrapf(io.EOF, "unable to read")
+}
+
+func f() error {
+	return errs.Wrap(io.EOF)
 }

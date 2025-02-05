@@ -10,17 +10,24 @@ import (
 
 type Stack []StackFrame
 
+func (s Stack) Root() error {
+	if len(s) == 0 {
+		return nil
+	}
+	return s[len(s)-1].Err
+}
+
 func (s Stack) Error() string {
 	if len(s) == 0 {
 		return "empty error stack"
 	}
-	return s[0].Error()
+	return s.Root().Error()
 }
 
 func (s Stack) Unwrap() []error {
 	errs := make([]error, len(s))
 	for i := range s {
-		errs[i] = s[i].Cause
+		errs[i] = s[i].Err
 	}
 	return errs
 }
@@ -30,15 +37,23 @@ type StackFrame struct {
 	Func    string
 	File    string
 	Line    int
-	Message string
-	Cause   error
+	Err     error
 }
 
 func (s StackFrame) Error() string {
-	return s.Cause.Error()
+	msg := fmt.Sprintf("%s:%d (%s.%s)",
+		filepath.Base(s.File),
+		s.Line,
+		filepath.Base(s.Package),
+		s.Func,
+	)
+	if s.Err != nil {
+		msg += " " + s.Err.Error()
+	}
+	return msg
 }
 
-func newStackFrame(err error, message string) StackFrame {
+func newStackFrame(err error) StackFrame {
 	pc, filename, line, _ := runtime.Caller(2)
 	parts := strings.Split(runtime.FuncForPC(pc).Name(), ".")
 	pl := len(parts)
@@ -56,16 +71,17 @@ func newStackFrame(err error, message string) StackFrame {
 		Func:    funcName,
 		File:    filename,
 		Line:    line,
-		Message: message,
-		Cause:   err,
+		Err:     err,
 	}
 }
 
 // Wrap pushes the current error into the stack and places a new error on top with the default text provided by FormatWrap
 func Wrap(err error) error {
 	var eStack Stack
-	errors.As(err, &eStack)
-	return Stack(append([]StackFrame{newStackFrame(err, "")}, eStack...))
+	if errors.As(err, &eStack) {
+		return Stack(append([]StackFrame{newStackFrame(nil)}, eStack...))
+	}
+	return Stack([]StackFrame{newStackFrame(err)})
 }
 
 // Wrapf pushes the current error into the stack and places a new error on top with the formated text,
@@ -75,26 +91,20 @@ func Wrapf(err error, format string, a ...any) error {
 	if errors.As(err, &eStack) {
 		return Stack(
 			append(
-				[]StackFrame{newStackFrame(err, fmt.Sprintf(format, a...))},
+				[]StackFrame{newStackFrame(fmt.Errorf(format, a...))},
 				eStack...,
 			),
 		)
 	}
-	return Stack([]StackFrame{newStackFrame(err, fmt.Sprintf(format+" » %s", append(a, err.Error())...))})
+	return Stack([]StackFrame{newStackFrame(fmt.Errorf(format+" » %s", append(a, err.Error())...))})
 }
-
-// Errorf wraps an error using the traditional fmt.Errorf method in an errs.Sack error
-//func Errorf(format string, a ...any) error {
-//	return Stack([]StackFrame{newStackFrame(fmt.Errorf(format, a...))})
-//}
 
 func Dump(err error) string {
 	var stack Stack
-	if errors.As(err, &stack) {
+	if errors.As(err, &stack) && len(stack) > 1 {
 		errs := make([]string, len(stack)+1)
 		errs[0] = stack.Error()
-
-		for i := range stack {
+		for i := 0; i < len(stack); i++ {
 			prefix := "│"
 			for p := 1; p < i; p++ {
 				prefix += " "
@@ -107,24 +117,10 @@ func Dump(err error) string {
 			} else {
 				prefix += "┬"
 			}
-			errs[i+1] = fmt.Sprintf("%s %s:%d %s.%s %s",
-				prefix,
-				filepath.Base(stack[i].File),
-				stack[i].Line,
-				filepath.Base(stack[i].Package),
-				stack[i].Func,
-				stack[i].Message,
-			)
+			errs[i+1] = fmt.Sprintf("%s %s", prefix, stack[i].Error())
 		}
 		return strings.Join(errs, "\n")
-	}
-	return err.Error()
-}
 
-func Root(err error) string {
-	var eStack Stack
-	if errors.As(err, &eStack) && len(eStack) > 0 {
-		return eStack[len(eStack)-1].Error()
 	}
 	return err.Error()
 }
