@@ -5,29 +5,20 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 )
 
-var rootLast = true
-
-type Stack []StackFrame
-
-func (s Stack) Error() string {
-	if len(s) == 0 {
-		return "empty error stack"
-	}
-	if s[0].Err == nil {
-		return ""
-	}
-	return s[0].Err.Error()
+type Stack struct {
+	error
+	Trace []StackFrame
 }
 
 func (s Stack) Unwrap() []error {
-	errs := make([]error, 0, len(s))
-	for i := range s {
-		if s[i].Err != nil {
-			errs = append(errs, s[i].Err)
-		}
+	errs := make([]error, len(s.Trace)+1)
+	errs[0] = s.error
+	for i := range s.Trace {
+		errs[i+1] = s.Trace[i].error
 	}
 	return errs
 }
@@ -37,18 +28,20 @@ type StackFrame struct {
 	Func    string
 	File    string
 	Line    int
-	Err     error
+	error
 }
 
-func (s StackFrame) Error() string {
+func (s StackFrame) String() string {
 	msg := fmt.Sprintf("%s:%d (%s.%s)",
 		filepath.Base(s.File),
 		s.Line,
 		filepath.Base(s.Package),
 		s.Func,
 	)
-	if s.Err != nil {
-		msg += " " + s.Err.Error()
+	if s.error != nil {
+		msg += " " + s.Error()
+	} else {
+		msg += " ^"
 	}
 	return msg
 }
@@ -71,55 +64,73 @@ func newStackFrame(err error) StackFrame {
 		Func:    funcName,
 		File:    filename,
 		Line:    line,
-		Err:     err,
+		error:   err,
 	}
 }
 
-// Wrap pushes the current error into the stack and places a new error on top with the default text provided by FormatWrap
-func Wrap(err error) error {
-	var eStack Stack
-	if errors.As(err, &eStack) {
-		return append(eStack, newStackFrame(nil))
+// Push pushes err onto the stack if err is not nil
+func Push(err error) error {
+	if err == nil {
+		return nil
 	}
-	return Stack([]StackFrame{newStackFrame(err)})
+	var eStack Stack
+	if !errors.As(err, &eStack) {
+		eStack.error = err
+		eStack.Trace = append(eStack.Trace, newStackFrame(err))
+	} else {
+		eStack.Trace = append(eStack.Trace, newStackFrame(nil))
+	}
+	return eStack
 }
 
-// Wrapf pushes the current error into the stack and places a new error on top with the formated text,
-// it does not use the traditional error wrapping to do so
-func Wrapf(err error, format string, a ...any) error {
+// Wrap pushes err and wrapped onto the stack if err is not nil
+func Wrap(err error, wrapped error) error {
+	if err == nil {
+		return nil
+	}
 	var eStack Stack
 	if errors.As(err, &eStack) {
-		return append(eStack, newStackFrame(fmt.Errorf(format, a...)))
+		eStack.Trace = append(eStack.Trace, newStackFrame(wrapped))
+	} else {
+		eStack.Trace = append(eStack.Trace, newStackFrame(err), newStackFrame(wrapped))
 	}
-	return Stack([]StackFrame{newStackFrame(fmt.Errorf(format+" » %w", append(a, err)...))})
+	eStack.error = wrapped
+
+	return eStack
 }
 
 func Detailed(err error) string {
+	if err == nil {
+		return ""
+	}
 	var stack Stack
-	if errors.As(err, &stack) && len(stack) > 1 {
-		lines := make([]string, len(stack)+1)
-		lines[0] = stack.Error()
-		for i := 0; i < len(stack); i++ {
-			n := i
-			if rootLast {
-				n = len(stack) - 1 - i
-			}
-			prefix := "│"
-			for p := 1; p < n; p++ {
-				prefix += " "
-			}
-			if n > 0 {
-				prefix += "└"
-			}
-			if n == len(stack)-1 {
-				prefix += "─"
-			} else {
-				prefix += "┬"
-			}
-			lines[n+1] = fmt.Sprintf("%s %s", prefix, stack[i].Error())
-		}
-		return strings.Join(lines, "\n")
-
+	if errors.As(err, &stack) && len(stack.Trace) > 1 {
+		trace := stack.Trace
+		return stack.Error() + "\n" + stepJoin(trace, StackFrame.String)
 	}
 	return err.Error()
+}
+
+func stepJoin[T any](input []T, stringer func(T) string) string {
+	result := make([]string, len(input))
+	for i := 0; i < len(input); i++ {
+		result[i] = stringer(input[i])
+	}
+	slices.Reverse(result)
+	for i := 0; i < len(result); i++ {
+		prefix := "│"
+		for p := 1; p < i; p++ {
+			prefix += " "
+		}
+		if i > 0 {
+			prefix += "└"
+		}
+		if i == len(input)-1 {
+			prefix += "─"
+		} else {
+			prefix += "┬"
+		}
+		result[i] = prefix + " " + result[i]
+	}
+	return strings.Join(result, "\n")
 }
