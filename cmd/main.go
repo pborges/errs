@@ -54,16 +54,19 @@ func noerr() error {
 
 /**
 OUTPUT:
-2025/02/05 12:05:14 main.go:16: multiple Read calls return no data or error
-2025/02/05 12:05:14 main.go:17: multiple Read calls return no data or error
+2025/02/05 19:09:24 main.go:16: multiple Read calls return no data or error
+2025/02/05 19:09:24 main.go:17: multiple Read calls return no data or error
 │┬ main.go:28 (main.a) ^
 │└┬ main.go:32 (main.b) ^
 │ └┬ main.go:36 (main.c) multiple Read calls return no data or error
-│  └─ main.go:40 (main.d) EOF
-2025/02/05 12:05:14 main.go:18: EOF
-2025/02/05 12:05:14 main.go:19:  true
-2025/02/05 12:05:14 main.go:20: EOF
-2025/02/05 12:05:14 main.go:21: i am no good
-2025/02/05 12:05:14 main.go:23: true
-2025/02/05 12:05:14 main.go:24: true
+│  └┬ main.go:40 (main.d) ^
+│   └─ main.go:44 (main.e) EOF
+2025/02/05 19:09:24 main.go:18: EOF
+2025/02/05 19:09:24 main.go:19:  true
+2025/02/05 19:09:24 main.go:20: EOF
+2025/02/05 19:09:24 main.go:21: i am no good
+│┬ main.go:21 (main.main) i am no good
+│└─ main.go:21 (main.main) EOF
+2025/02/05 19:09:24 main.go:23: true
+2025/02/05 19:09:24 main.go:24: true
 */
