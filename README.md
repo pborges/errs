@@ -4,6 +4,17 @@ An opinionated, non-intrusive error stacker.
 
 Inbune errors with Caller info and bubble it up the stack.
 
+## Sample Output
+```
+2025/02/05 19:09:24 main.go:17: multiple Read calls return no data or error
+│┬ main.go:28 (main.a) ^
+│└┬ main.go:32 (main.b) ^
+│ └┬ main.go:36 (main.c) multiple Read calls return no data or error
+│  └┬ main.go:40 (main.d) ^
+│   └─ main.go:44 (main.e) EOF
+```
+See [example](example/usage.go)
+
 ## Motivation
 I am lazy. I often just catch errors and throw them up the call chain. 
 
@@ -86,12 +97,3 @@ fmt.Println(errs.Detailed(err))
 ```
 The `errs.Detailed` method will operate on any error, if the error is an `errs.Stack` it will be printed.
 
-For example:
-```
-2025/02/05 19:09:24 main.go:17: multiple Read calls return no data or error
-│┬ main.go:28 (main.a) ^
-│└┬ main.go:32 (main.b) ^
-│ └┬ main.go:36 (main.c) multiple Read calls return no data or error
-│  └┬ main.go:40 (main.d) ^
-│   └─ main.go:44 (main.e) EOF
-```
