@@ -31,28 +31,28 @@ However after a few nested wraps the error messages start to become... long.
 
 ```go
 func a0() error {
-if err := a1(); err != nil {
-return fmt.Errorf("unable to a1: %w", err)
-}
-return nil
+    if err := a1(); err != nil {
+        return fmt.Errorf("unable to a1: %w", err)
+    }
+    return nil
 }
 
 func a1() error {
-if err := a2(); err != nil {
-return fmt.Errorf("unable to a2: %w", err)
-}
-return nil
+    if err := a2(); err != nil {
+        return fmt.Errorf("unable to a2: %w", err)
+    }
+    return nil
 }
 
 func a2() error {
-if err := a3(); err != nil {
-return fmt.Errorf("unable to a3: %w", err)
-}
-return nil
+    if err := a3(); err != nil {
+        return fmt.Errorf("unable to a3: %w", err)
+    }
+    return nil
 }
 
 func a3() error {
-return io.EOF
+    return io.EOF
 }
 
 fmt.Println(a0())
@@ -74,8 +74,8 @@ Simple to use, where you would normally bubble up an error,
 
 ```go
 func MyFunction() error {
-err := myErrorProducingFunction()
-return err
+    err := myErrorProducingFunction()
+    return err
 }
 ```
 
@@ -85,8 +85,8 @@ Push it instead
 
 ```go
 func MyFunction() error {
-err := myErrorProducingFunction()
-return errs.Push(err)
+    err := myErrorProducingFunction()
+    return errs.Push(err)
 }
 ```
 
@@ -96,8 +96,8 @@ Where you would normally `fmt.Errorf` to wrap an error, instead...
 
 ```go
 func MyFunction() error {
-err := myErrorProducingFunction()
-return errs.Wrap(err, errors.New("yea that didnt go as planned...."))
+    err := myErrorProducingFunction()
+    return errs.Wrap(err, errors.New("yea that didnt go as planned...."))
 }
 ```
 
@@ -115,12 +115,12 @@ Given a custom error such as
 
 ```go
 type JSError struct {
-Message  string
-Location string
+    Message  string
+    Location string
 }
 
 func (e JSError) Error() string {
-return e.Message
+    return e.Message
 }
 ```
 
@@ -128,11 +128,11 @@ We might want to change how this particular error type is printed.
 
 ```go
 errs.Transform(func (err error) (bool, string) {
-var jerr JSError
-if errors.As(err, &jerr) {
-return true, jerr.Message + " => " + jerr.Location
-}
-return false, ""
+    var jerr JSError
+    if errors.As(err, &jerr) {
+        return true, jerr.Message + " => " + jerr.Location
+    }
+    return false, ""
 })
 ```
 
