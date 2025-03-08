@@ -101,20 +101,52 @@ func noerr() error {
 
 /**
 OUTPUT:
-2025/02/06 18:41:19 main.go:16: multiple Read calls return no data or error
-2025/02/06 18:41:19 main.go:17: multiple Read calls return no data or error
-│┬ main.go:29 (main.a) ^
-│└┬ main.go:33 (main.b) ^
-│ └┬ main.go:37 (main.c) multiple Read calls return no data or error
-│  └┬ main.go:41 (main.d) ^
-│   └─ main.go:45 (main.e) EOF
-2025/02/06 18:41:19 main.go:18: EOF
-2025/02/06 18:41:19 main.go:19:  true
-2025/02/06 18:41:19 main.go:20: EOF
-2025/02/06 18:41:19 main.go:21: i am no good
-│┬ main.go:21 (main.main) i am no good
-│└─ main.go:21 (main.main) EOF
-2025/02/06 18:41:19 main.go:23: Is io.EOF true
-2025/02/06 18:41:19 main.go:24: Is io.ErrNoProgress true
-2025/02/06 18:41:19 main.go:25: Is io.ErrClosedPipe false
+* Normal print
+2025/03/07 18:40:06 usage.go:27: multiple Read calls return no data or error
+
+* Detailed print
+2025/03/07 18:40:06 usage.go:30: multiple Read calls return no data or error
+│┬ usage.go:75 (main.a) ^
+│└┬ usage.go:79 (main.b) ^
+│ └┬ usage.go:83 (main.c) multiple Read calls return no data or error
+│  └┬ usage.go:87 (main.d) ^
+│   └─ usage.go:91 (main.e) EOF
+
+* Nil error
+2025/03/07 18:40:06 usage.go:33:
+
+* Wrapped Error
+2025/03/07 18:40:06 usage.go:36: i am no good
+│┬ usage.go:36 (main.main) i am no good
+│└─ usage.go:36 (main.main) EOF
+
+* Is io.EOF
+2025/03/07 18:40:06 usage.go:39: true
+
+* Is io.ErrNoProgress
+2025/03/07 18:40:06 usage.go:42: true
+
+* Is io.ErrClosedPipe
+2025/03/07 18:40:06 usage.go:45: false
+
+* Multiline
+2025/03/07 18:40:06 usage.go:48: multiline error
+│ line1
+│ line2
+│┬ usage.go:70 (main.multiline) ^
+│└┬ usage.go:69 (main.multiline) ^
+│ └┬ usage.go:68 (main.multiline) ^
+│  └─ usage.go:67 (main.multiline) multiline error
+│     line1
+│     line2
+
+* JSError with no transformer
+2025/03/07 18:40:06 usage.go:51: foo
+│┬ usage.go:51 (main.main) ^
+│└─ usage.go:51 (main.main) foo
+
+* JSError with with transformer
+2025/03/07 18:40:06 usage.go:63: foo => bar:12
+│┬ usage.go:63 (main.main) ^
+│└─ usage.go:63 (main.main) foo => bar:12
 */
