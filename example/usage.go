@@ -2,27 +2,73 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/pborges/errs"
 	"io"
 	"log"
 	"os"
 )
 
+type JSError struct {
+	Message  string
+	Location string
+}
+
+func (e JSError) Error() string {
+	return e.Message
+}
+
 func main() {
 	log.SetOutput(os.Stdout)
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	err := a()
+	fmt.Println("* Normal print")
 	log.Println(err)
+
+	fmt.Println("\n* Detailed print")
 	log.Println(errs.Detailed(err))
-	log.Println(errs.Detailed(f()))
-	log.Println(errs.Detailed(noerr()), noerr() == nil)
-	log.Println(errs.Detailed(errs.Push(io.EOF)))
+
+	fmt.Println("\n* Nil error")
+	log.Println(errs.Detailed(noerr()))
+
+	fmt.Println("\n* Wrapped Error")
 	log.Println(errs.Detailed(errs.Wrap(io.EOF, errors.New("i am no good"))))
 
-	log.Println("Is io.EOF", errors.Is(err, io.EOF))
-	log.Println("Is io.ErrNoProgress", errors.Is(err, io.ErrNoProgress))
-	log.Println("Is io.ErrClosedPipe", errors.Is(err, io.ErrClosedPipe))
+	fmt.Println("\n* Is io.EOF")
+	log.Println(errors.Is(err, io.EOF))
+
+	fmt.Println("\n* Is io.ErrNoProgress")
+	log.Println(errors.Is(err, io.ErrNoProgress))
+
+	fmt.Println("\n* Is io.ErrClosedPipe")
+	log.Println(errors.Is(err, io.ErrClosedPipe))
+
+	fmt.Println("\n* Multiline")
+	log.Println(errs.Detailed(multiline()))
+
+	fmt.Println("\n* JSError with no transformer")
+	log.Println(errs.Detailed(errs.Push(errs.Push(JSError{Message: "foo", Location: "bar:12"}))))
+
+	// Add a transformer
+	errs.Transform(func(err error) (bool, string) {
+		var jerr JSError
+		if errors.As(err, &jerr) {
+			return true, jerr.Message + " => " + jerr.Location
+		}
+		return false, ""
+	})
+
+	fmt.Println("\n* JSError with with transformer")
+	log.Println(errs.Detailed(errs.Push(errs.Push(JSError{Message: "foo", Location: "bar:12"}))))
+}
+
+func multiline() error {
+	err := errs.Push(errors.New("multiline error\nline1\nline2"))
+	err = errs.Push(err)
+	err = errs.Push(err)
+	err = errs.Push(err)
+	return err
 }
 
 func a() error {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
-	"slices"
 	"strings"
 )
 
@@ -39,7 +38,7 @@ func (s StackFrame) String() string {
 		s.Func,
 	)
 	if s.error != nil {
-		msg += " " + s.Error()
+		msg += " " + transform(s.error)
 	} else {
 		msg += " ^"
 	}
@@ -106,18 +105,23 @@ func Detailed(err error) string {
 	var stack Stack
 	if errors.As(err, &stack) && len(stack.Trace) > 1 {
 		trace := stack.Trace
-		return stack.Error() + "\n" + stepJoin(trace, StackFrame.String)
+		var message []string
+		for i, line := range strings.Split(transform(stack), "\n") {
+			line = strings.TrimSpace(line)
+			if i == 0 {
+				message = append(message, line)
+			} else {
+				message = append(message, "│ "+line)
+			}
+		}
+		return strings.Join(message, "\n") + "\n" + stepJoin(trace, StackFrame.String)
 	}
 	return err.Error()
 }
 
 func stepJoin[T any](input []T, stringer func(T) string) string {
-	result := make([]string, len(input))
+	var results []string
 	for i := 0; i < len(input); i++ {
-		result[i] = stringer(input[i])
-	}
-	slices.Reverse(result)
-	for i := 0; i < len(result); i++ {
 		prefix := "│"
 		for p := 1; p < i; p++ {
 			prefix += " "
@@ -130,7 +134,21 @@ func stepJoin[T any](input []T, stringer func(T) string) string {
 		} else {
 			prefix += "┬"
 		}
-		result[i] = prefix + " " + result[i]
+		output := stringer(input[len(input)-1-i])
+		first := true
+		for line := range strings.Lines(output) {
+			line = strings.TrimSpace(line)
+			if first {
+				results = append(results, prefix+" "+line)
+				first = false
+			} else {
+				multilinePrefix := "│"
+				for p := 1; p < i; p++ {
+					multilinePrefix += " "
+				}
+				results = append(results, multilinePrefix+"   "+line)
+			}
+		}
 	}
-	return strings.Join(result, "\n")
+	return strings.Join(results, "\n")
 }

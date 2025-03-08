@@ -5,6 +5,7 @@ An opinionated, non-intrusive error stacker.
 Inbune errors with Caller info and bubble it up the stack.
 
 ## Sample Output
+
 ```
 2025/02/05 19:09:24 main.go:17: multiple Read calls return no data or error
 │┬ main.go:28 (main.a) ^
@@ -13,10 +14,12 @@ Inbune errors with Caller info and bubble it up the stack.
 │  └┬ main.go:40 (main.d) ^
 │   └─ main.go:44 (main.e) EOF
 ```
+
 See [example](example/usage.go)
 
 ## Motivation
-I am lazy. I often just catch errors and throw them up the call chain. 
+
+I am lazy. I often just catch errors and throw them up the call chain.
 
 Then I log the errors at the very top, loosing a ton of contextual information!
 
@@ -25,35 +28,38 @@ Or when I am feeling less lazy... I actually wrap errors using `fmt.Errorf`,
 However after a few nested wraps the error messages start to become... long.
 
 ### Code
+
 ```go
 func a0() error {
-	if err := a1(); err != nil {
-		return fmt.Errorf("unable to a1: %w", err)
-	}
-	return nil
+if err := a1(); err != nil {
+return fmt.Errorf("unable to a1: %w", err)
+}
+return nil
 }
 
 func a1() error {
-	if err := a2(); err != nil {
-		return fmt.Errorf("unable to a2: %w", err)
-	}
-	return nil
+if err := a2(); err != nil {
+return fmt.Errorf("unable to a2: %w", err)
+}
+return nil
 }
 
 func a2() error {
-	if err := a3(); err != nil {
-		return fmt.Errorf("unable to a3: %w", err)
-	}
-	return nil
+if err := a3(); err != nil {
+return fmt.Errorf("unable to a3: %w", err)
+}
+return nil
 }
 
 func a3() error {
-	return io.EOF
+return io.EOF
 }
 
 fmt.Println(a0())
 ```
+
 ### Output
+
 ```
 unable to a1: unable to a2: unable to a3: EOF
 ```
@@ -68,32 +74,66 @@ Simple to use, where you would normally bubble up an error,
 
 ```go
 func MyFunction() error {
-    err := myErrorProducingFunction()
-    return err
+err := myErrorProducingFunction()
+return err
 }
 ```
+
 Push it instead
 
 # Push an error
+
 ```go
 func MyFunction() error {
-    err := myErrorProducingFunction()
-    return errs.Push(err)
+err := myErrorProducingFunction()
+return errs.Push(err)
 }
 ```
+
 Where you would normally `fmt.Errorf` to wrap an error, instead...
 
 # Wrap an error
+
 ```go
 func MyFunction() error {
-    err := myErrorProducingFunction()
-    return errs.Wrap(err, errors.New("yea that didnt go as planned...."))
+err := myErrorProducingFunction()
+return errs.Wrap(err, errors.New("yea that didnt go as planned...."))
 }
 ```
 
 # Dump the error stack
+
 ```go
 fmt.Println(errs.Detailed(err))
 ```
+
 The `errs.Detailed` method will operate on any error, if the error is an `errs.Stack` it will be printed.
 
+# Transform errors
+
+Given a custom error such as
+
+```go
+type JSError struct {
+Message  string
+Location string
+}
+
+func (e JSError) Error() string {
+return e.Message
+}
+```
+
+We might want to change how this particular error type is printed.
+
+```go
+errs.Transform(func (err error) (bool, string) {
+var jerr JSError
+if errors.As(err, &jerr) {
+return true, jerr.Message + " => " + jerr.Location
+}
+return false, ""
+})
+```
+
+Many of these can be added
